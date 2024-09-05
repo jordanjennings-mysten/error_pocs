@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",       // Use a modern target
+    "module": "ESNext",       // Use ES module system
+    "moduleResolution": "node", // Use node module resolution
+    "strict": true,           // Enable strict type-checking options
+    "esModuleInterop": true,  // Enables emit interoperability between CommonJS and ES Modules
+    "skipLibCheck": true,     // Skip type checking of all declaration files
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./dist",       // Output directory
+    "rootDir": "./src"        // Root directory
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}
