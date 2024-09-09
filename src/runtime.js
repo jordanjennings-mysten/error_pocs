@@ -19,7 +19,6 @@ async function run_test(testName) {
     await client.waitForTransaction({ digest: result.digest });
 }
 
-
 if (process.argv.length < 3) {
     console.log('provide a test name');
 } else {

@@ -77,3 +77,11 @@ export async function publishPackage(moveProject) {
 
     return { packageId, publishTxn };
 }
+
+
+export async function upgradePackage(moveProject, upgradeCap) {
+
+    console.log('upgrading', upgradeCap);
+    execSync(`cd ${moveProject} && sui client upgrade --upgrade-capability ${upgradeCap} --skip-dependency-verification`,
+        { stdio: 'inherit' });
+}
