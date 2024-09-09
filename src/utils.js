@@ -23,8 +23,8 @@ export async function Faucet() {
     await requestSuiFromFaucetV0({ host: faucetUrl, recipient: address })
 }
 
-export async function Deploy() {
-    const { packageId, publishTxn } = await publishPackage();
+export async function Deploy(moveProject) {
+    const { packageId, publishTxn } = await publishPackage(moveProject);
     const updateCap = publishTxn.effects?.created.filter(
         (o) =>
             typeof o.owner === 'object' &&
@@ -33,12 +33,12 @@ export async function Deploy() {
     return { publishTxn, packageId, updateCap: updateCap.reference.objectId };
 }
 
-export async function publishPackage() {
+export async function publishPackage(moveProject) {
     const tmpobj = tmp.dirSync({ unsafeCleanup: true });
 
     const { modules, dependencies } = JSON.parse(
         execSync(
-            `sui move build --dump-bytecode-as-base64 --install-dir ${tmpobj.name}`,
+            `cd ${moveProject} && sui move build --dump-bytecode-as-base64 --install-dir ${tmpobj.name}`,
             { encoding: 'utf-8' },
         ),
     );

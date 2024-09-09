@@ -3,7 +3,7 @@ import { Transaction } from '@mysten/sui/transactions';
 
 async function run_test(testName) {
     await Faucet();
-    let {packageId} = await Deploy();
+    let {packageId} = await Deploy('runtime');
 
     const tx = new Transaction();
     tx.moveCall({
