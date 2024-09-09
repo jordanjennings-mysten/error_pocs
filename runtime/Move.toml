@@ -1,6 +1,8 @@
 [package]
 name = "error_pocs"
 edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
+published-at = "0x203fc519f8347d08a5b64d2dfb0c5b7471286bd1a64678d8239e5b1089cf6cb1"
+
 # license = ""           # e.g., "MIT", "GPL", "Apache 2.0"
 # authors = ["..."]      # e.g., ["Joe Smith (joesmith@noemail.com)", "John Snow (johnsnow@noemail.com)"]
 
