@@ -19,6 +19,8 @@ let address = await getAddress();
 // create a client connected to devnet
 export const client = new SuiClient({ url: rpcUrl });
 
+
+
 export async function Faucet() {
     await requestSuiFromFaucetV0({ host: faucetUrl, recipient: address })
 }
@@ -80,8 +82,16 @@ export async function publishPackage(moveProject) {
 
 
 export async function upgradePackage(moveProject, upgradeCap) {
-
-    console.log('upgrading', upgradeCap);
+    console.log('upgrading with cap', upgradeCap);
     execSync(`cd ${moveProject} && sui client upgrade --upgrade-capability ${upgradeCap} --skip-dependency-verification`,
         { stdio: 'inherit' });
+}
+
+export async function exists(path) {
+    try {
+        await fs.access(path);
+        return true;
+    } catch (e) {
+        return false;
+    }
 }
