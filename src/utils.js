@@ -12,14 +12,12 @@ const faucetUrl = 'http://localhost:9123';
 
 let keypair_str = 'AOn1BfySfunOZvWk4WpsmT9h2SzP4okPW69xkPQ7FWuN';
 let secretKey = fromB64(keypair_str);
+
 export const keypair = Ed25519Keypair.fromSecretKey(secretKey.slice(1));
-const getAddress = async () => await keypair.getPublicKey().toSuiAddress();
-let address = await getAddress();
+export const address = keypair.getPublicKey().toSuiAddress();
 
 // create a client connected to devnet
 export const client = new SuiClient({ url: rpcUrl });
-
-
 
 export async function Faucet() {
     await requestSuiFromFaucetV0({ host: faucetUrl, recipient: address })
@@ -38,12 +36,8 @@ export async function Deploy(moveProject) {
 export async function publishPackage(moveProject) {
     const tmpobj = tmp.dirSync({ unsafeCleanup: true });
 
-    const { modules, dependencies } = JSON.parse(
-        execSync(
-            `cd ${moveProject} && sui move build --dump-bytecode-as-base64 --install-dir ${tmpobj.name}`,
-            { encoding: 'utf-8' },
-        ),
-    );
+    const { modules, dependencies } = await buildPackage(moveProject);
+
     const tx = new Transaction();
     const cap = tx.publish({
         modules,
@@ -57,6 +51,7 @@ export async function publishPackage(moveProject) {
         transaction: tx,
         signer: keypair,
     });
+    console.log('executed transaction', digest);
 
     const publishTxn = await client.waitForTransaction({
         digest: digest,
@@ -80,11 +75,24 @@ export async function publishPackage(moveProject) {
     return { packageId, publishTxn };
 }
 
+export async function buildPackage(moveProject) {
+    const tmpobj = tmp.dirSync({ unsafeCleanup: true });
+    return JSON.parse(
+        execSync(
+            `cd ${moveProject} && sui move build --dump-bytecode-as-base64 --install-dir ${tmpobj.name}`,
+            { encoding: 'utf-8' },
+        )
+    );
+}
 
 export async function upgradePackage(moveProject, upgradeCap) {
     console.log('upgrading with cap', upgradeCap);
-    execSync(`cd ${moveProject} && sui client upgrade --upgrade-capability ${upgradeCap} --skip-dependency-verification`,
-        { stdio: 'inherit' });
+    try {
+        execSync(`cd ${moveProject} && sui client upgrade --upgrade-capability ${upgradeCap} --skip-dependency-verification`,
+            {stdio: 'inherit'});
+    } catch(e) {
+        console.log('upgrade command exited nonzero');
+    }
 }
 
 export async function exists(path) {
