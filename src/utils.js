@@ -6,6 +6,7 @@ import { Ed25519Keypair, Ed25519PublicKey } from '@mysten/sui/keypairs/ed25519';
 import { SuiClient } from '@mysten/sui/client';
 import { Transaction, UpgradePolicy } from '@mysten/sui/transactions';
 import { requestSuiFromFaucetV0 } from "@mysten/sui/faucet";
+import * as fs from 'fs/promises';
 
 const rpcUrl = 'http://localhost:9000';
 const faucetUrl = 'http://localhost:9123';
