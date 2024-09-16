@@ -1,4 +1,14 @@
-import {client, address, keypair, Deploy, Faucet, exists, upgradePackage, buildPackage} from './utils.js';
+import {
+    client,
+    address,
+    keypair,
+    Deploy,
+    Faucet,
+    exists,
+    upgradePackage,
+    buildPackage,
+    upgradePackageCLI
+} from './utils.js';
 import { fromB58, toB58 } from '@mysten/bcs'
 import {promises as fs} from 'fs';
 import {Transaction, UpgradePolicy} from "@mysten/sui/transactions";
@@ -23,18 +33,37 @@ if (await exists(`upgrades-versions/${testName}-v1.move`)) {
     await fs.writeFile('./upgrades/Move.toml', moveToml);
 
     // upgrade the package
-    await upgradePackage('upgrades', updateCap);
+    await upgradePackageCLI('upgrades', updateCap);
 } else {
     let tests = {
-        'UpgradeACoin': UpgradeACoinTest,
+        // Upgrade Policy: Compatible
+        'CorruptTicket': CorruptTicketTest,
+        'ValidTicketDifferentModule': ValidTicketDifferentModuleTest,
+        'CapFromOtherModule': CapFromOtherModuleTest,
+        'UpgradeTwice': UpgradeTwiceTest,
+        'UpgradeUsingPackageID': UpgradeUsingPackageIDTest,
+        'UpgradeWithArbitraryObject': UpgradeWithArbitraryObjectTest,
+        'UpgradeWithACoin': UpgradeWithACoinTest,
+        'MixupUpgradeCaps': MixupUpgradeCapsTest,
+
+        // Upgrade Policy: Immutable
+        'UpgradeImmutable': UpgradeImmutableTest,
+
+        // Upgrade Policy: Dependency-Only
+        'AddFunctionOnDependencyOnly': AddFunctionOnDependencyOnlyTest,
+
+        // Upgrade Policy: Additive
+        'ChangeFunctionOnAdditive': ChangeFunctionOnAdditiveTest,
+
+        // Other
         // 'UnknownUpgradePolicy': UnknownUpgradePolicyTest,
         'PackageIDDoesNotMatch':  PackageIDDoesNotMatchTest,
         // 'UpgradeTheWrongPackageId': UpgradeTheWrongPackageIdTest,
-        'BadUpgradePolicy': BadUpgradePolicyTest,
-        'MixupUpgradeCaps': MixupUpgradeCapsTest,
-        'UpgradeImmutable': UpgradeImmutableTest,
-        'UpgradeTwice': UpgradeTwiceTest,
-        'ApplyCustomPolicy': ApplyCustomPolicyTest,
+        // 'BadUpgradePolicy': BadUpgradePolicyTest,
+        // 'MixupUpgradeCaps': MixupUpgradeCapsTest,
+        // 'UpgradeTwice': UpgradeTwiceTest,
+        // happy path not really a test
+        // 'ApplyCustomPolicy': ApplyCustomPolicyTest,
     }
     if (tests[testName]) {
         await tests[testName]();
@@ -43,7 +72,94 @@ if (await exists(`upgrades-versions/${testName}-v1.move`)) {
     }
 }
 
-async function UpgradeACoinTest() {
+async function CorruptTicketTest() {
+    // cp in the simple move file
+    fs.cp(`upgrades-versions/simple.move`, 'upgrades/sources/upgrades.move', {overwrite: true});
+
+    // deploy, get the build digest for ticket creation
+    await Faucet();
+    let {packageId, updateCap, buildDigest, modules, dependencies} = await Deploy('upgrades');
+
+    console.log('build digest', buildDigest);
+    console.log('update cap', updateCap);
+    // Create ticket
+    const tx = new Transaction();
+    const cap = tx.object(updateCap);
+    tx.transferObjects([updateCap], tx.pure.address(address));
+    const ticket = tx.moveCall({
+        target: '0x2::package::authorize_upgrade',
+        arguments: [cap, tx.pure.u8(UpgradePolicy.COMPATIBLE), tx.pure.vector('u8', buildDigest)],
+    });
+
+
+    const receipt = tx.upgrade({
+        modules,
+        dependencies,
+        package: packageId,
+        ticket,
+    });
+
+    tx.transferObjects([receipt], tx.pure.address(address));
+    tx.comm
+
+    // tx.moveCall({
+    //     target: '0x2::package::commit_upgrade',
+    //     arguments: [cap, receipt],
+    // });
+
+    const result = await client.signAndExecuteTransaction({
+        transaction: tx,
+        signer: keypair,
+        options: {
+            showEffects: true,
+            showObjectChanges: true,
+        },
+    });
+
+    await client.waitForTransaction({
+        digest: result.digest,
+    });
+}
+
+async function ValidTicketDifferentModuleTest() {
+    throw new Error('TODO');
+}
+
+async function CapFromOtherModuleTest() {
+    throw new Error('TODO');
+}
+
+async function UpgradeTwiceTest() {
+    // reset the package to the original state by taking upgrades-versions/simple.move and
+    await fs.cp(`upgrades-versions/simple.move`, 'upgrades/sources/upgrades.move', {overwrite: true});
+
+    // deploy the package
+    await Faucet();
+    let {packageId, updateCap} = await Deploy('upgrades');
+
+    // write the bad package as the package instead of the packageId
+    let moveToml = await fs.readFile('./upgrades/Move.toml', 'utf-8');
+    moveToml = moveToml.replace(/published-at = "(.*)"/, `published-at = "${packageId}"`);
+    await fs.writeFile('./upgrades/Move.toml', moveToml);
+
+    // upgrade the package
+    console.log(`upgrading once ${packageId}`);
+    await upgradePackageCLI('upgrades', updateCap);
+
+    // upgrade the package again
+    console.log(`upgrading twice ${packageId}`);
+    await upgradePackageCLI('upgrades', updateCap);
+}
+
+async function UpgradeUsingPackageIDTest() {
+    throw new Error('TODO');
+}
+
+async function UpgradeWithArbitraryObjectTest() {
+    throw new Error('TODO');
+}
+
+async function UpgradeWithACoinTest() {
     // get a coin id
     let coins = await client.getCoins({owner: '0xccb8a90ff6ede2012b865873213eb56e6ac5f226a436a7e89965ef94e42fbbca'})
     let coinId = coins.data[0].coinObjectId;
@@ -62,90 +178,33 @@ async function UpgradeACoinTest() {
     await fs.writeFile('./upgrades/Move.toml', moveToml);
 
     // upgrade the package
-    await upgradePackage('upgrades', updateCap);
-}
-
-async function UpgradeWithAnObjectTest() {
-
-}
-
-async function UpgradeWithAPackageId() {
-
-}
-
-async function PackageIDDoesNotMatchTest() {
-    // our bad backage which will cause the matching error
-    let badPackage = "0x1";
-
-    // reset the package to the original state by taking upgrades-versions/simple.move and
-    await fs.cp(`upgrades-versions/simple.move`, 'upgrades/sources/upgrades.move', {overwrite: true});
-
-    // deploy the package
-    await Faucet();
-    let {updateCap} = await Deploy('upgrades');
-
-    // write the bad package as the package instead of the packageId
-    console.log(`upgrading to our "bad package" ${badPackage}`)
-    let moveToml = await fs.readFile('./upgrades/Move.toml', 'utf-8');
-    moveToml = moveToml.replace(/published-at = "(.*)"/, `published-at = "${badPackage}"`);
-    await fs.writeFile('./upgrades/Move.toml', moveToml);
-
-    // upgrade the package
-    await upgradePackage('upgrades', updateCap);
+    await upgradePackageCLI('upgrades', updateCap);
 }
 
 async function MixupUpgradeCapsTest() {
-    // our bad backage which will cause the matching error
-    let badPackage = "0x1";
+    await Faucet();
+
 
     // reset the package to the original state by taking upgrades-versions/simple.move and
     await fs.cp(`upgrades-versions/simple.move`, 'upgrades/sources/upgrades.move', {overwrite: true});
 
-    // deploy the package
-    await Faucet();
-    let {updateCap} = await Deploy('upgrades');
+    // deploy package A
+    let {packageId: packageIdA, updateCap: upgradeCapA} = await Deploy('upgrades');
+
+    // deploy package B
+    let {packageId: packageIdB, updateCap: upgradeCapB} = await Deploy('upgrades');
 
     // write the bad package as the package instead of the packageId
-    console.log(`upgrading to our "bad package" ${badPackage}`)
+    console.log(`upgrading B with A cap A ${packageIdA} B ${packageIdB}`);
     let moveToml = await fs.readFile('./upgrades/Move.toml', 'utf-8');
-    moveToml = moveToml.replace(/published-at = "(.*)"/, `published-at = "${badPackage}"`);
+    moveToml = moveToml.replace(/published-at = "(.*)"/, `published-at = "${packageIdB}"`);
     await fs.writeFile('./upgrades/Move.toml', moveToml);
 
     // upgrade the package
-    await upgradePackage('upgrades', updateCap);
+    await upgradePackageCLI('upgrades', upgradeCapA);
 }
 
 async function UpgradeImmutableTest() {
-    // our bad backage which will cause the matching error
-
-    // reset the package to the original state by taking upgrades-versions/simple.move and
-    await fs.cp(`upgrades-versions/simple.move`, 'upgrades/sources/upgrades.move', {overwrite: true});
-
-    // deploy the package
-    await Faucet();
-    let {packageId, upgradeCap} = await Deploy('upgrades');
-
-    // let tx = new Transaction();
-    //
-    // tx.moveCall({
-    //     target: `${packageId}::package::make_immutable`,
-    //     arguments: [upgradeCap],
-    // });
-    //
-    // const { digest } = await client.signAndExecuteTransaction({
-    //     transaction: tx,
-    //     signer: keypair,
-    // });
-    //
-    // await client.waitForTransaction({
-    //     digest: digest,
-    // });
-    //
-    // // try upgrading
-    // await upgradePackage('upgrades', upgradeCap);
-}
-
-async function UpgradeTwiceTest() {
     // reset the package to the original state by taking upgrades-versions/simple.move and
     await fs.cp(`upgrades-versions/simple.move`, 'upgrades/sources/upgrades.move', {overwrite: true});
 
@@ -153,19 +212,37 @@ async function UpgradeTwiceTest() {
     await Faucet();
     let {packageId, updateCap} = await Deploy('upgrades');
 
-    // write the bad package as the package instead of the packageId
-    let moveToml = await fs.readFile('./upgrades/Move.toml', 'utf-8');
-    moveToml = moveToml.replace(/published-at = "(.*)"/, `published-at = "${packageId}"`);
-    await fs.writeFile('./upgrades/Move.toml', moveToml);
+    let tx = new Transaction();
+    console.log('upgrade cap', updateCap);
 
-    // upgrade the package
-    console.log(`upgrading once ${packageId}`);
-    await upgradePackage('upgrades', updateCap);
+    tx.moveCall({
+        target: `0x2::package::make_immutable`,
+        arguments: [tx.object(updateCap)],
+    });
 
-    // upgrade the package again
-    console.log(`upgrading twice ${packageId}`);
-    await upgradePackage('upgrades', updateCap);
+    const { digest } = await client.signAndExecuteTransaction({
+        transaction: tx,
+        signer: keypair,
+    });
+
+    await client.waitForTransaction({
+        digest: digest,
+    });
+
+    console.log('UPGRADING WITH CAP', updateCap);
+
+    // try upgrading
+    await upgradePackageCLI('upgrades', updateCap);
 }
+
+async function AddFunctionOnDependencyOnlyTest() {
+
+}
+
+async function ChangeFunctionOnAdditiveTest() {
+    new Er
+}
+
 
 // happy path demonstration purposes, no errors
 // TODO this is broken, cannot continue with the custom policy tests
@@ -214,7 +291,6 @@ async function ApplyCustomPolicyTest() {
     {
         await fs.cp(`upgrades-versions/nudge.move`, 'upgrades/sources/upgrades.move', {overwrite: true});
         let {modules, dependencies, digest: buildDigest} = await buildPackage('upgrades');
-
 
         let nudgePackageId = result.objectChanges.filter((a) => a.type === 'published')[0].packageId;
         let wrappedUpdateCap = result.objectChanges.filter((a) => a.type === 'created')[0].objectId;
@@ -276,3 +352,25 @@ async function ApplyCustomPolicyTest() {
 async function BadUpgradePolicyTest() {
     throw new Error('TODO');
 }
+
+async function PackageIDDoesNotMatchTest() {
+    // our bad backage which will cause the matching error
+    let badPackage = "0x1";
+
+    // reset the package to the original state by taking upgrades-versions/simple.move and
+    await fs.cp(`upgrades-versions/simple.move`, 'upgrades/sources/upgrades.move', {overwrite: true});
+
+    // deploy the package
+    await Faucet();
+    let {updateCap} = await Deploy('upgrades');
+
+    // write the bad package as the package instead of the packageId
+    console.log(`upgrading to our "bad package" ${badPackage}`)
+    let moveToml = await fs.readFile('./upgrades/Move.toml', 'utf-8');
+    moveToml = moveToml.replace(/published-at = "(.*)"/, `published-at = "${badPackage}"`);
+    await fs.writeFile('./upgrades/Move.toml', moveToml);
+
+    // upgrade the package
+    await upgradePackageCLI('upgrades', updateCap);
+}
+
