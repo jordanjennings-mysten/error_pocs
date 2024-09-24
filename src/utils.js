@@ -87,7 +87,7 @@ export async function buildPackage(moveProject) {
 export async function upgradePackageCLI(moveProject, upgradeCap) {
     console.log('upgrading with cap', upgradeCap);
     try {
-        execSync(`cd ${moveProject} && sui client upgrade --upgrade-capability ${upgradeCap} --skip-dependency-verification`,
+        execSync(`cd ${moveProject} && sui client upgrade --upgrade-capability ${upgradeCap} --skip-dependency-verification --dry-run`,
             {stdio: 'inherit'});
     } catch(e) {
         console.log('upgrade command exited nonzero');
@@ -168,6 +168,7 @@ export async function exists(path) {
         await fs.access(path);
         return true;
     } catch (e) {
+        console.log(e)
         return false;
     }
 }
