@@ -8,6 +8,8 @@ import { Transaction, UpgradePolicy } from '@mysten/sui/transactions';
 import { requestSuiFromFaucetV0 } from "@mysten/sui/faucet";
 import * as fs from 'fs/promises';
 
+const SUI_BIN = 'sui';
+
 const rpcUrl = 'http://localhost:9000';
 const faucetUrl = 'http://localhost:9123';
 
@@ -35,8 +37,10 @@ export async function Deploy(moveProject) {
 }
 
 export async function publishPackage(moveProject) {
+    console.log('build');
     const { modules, dependencies, digest: buildDigest } = await buildPackage(moveProject);
 
+    console.log('publish');
     const tx = new Transaction();
     const cap = tx.publish({
         modules,
@@ -76,9 +80,10 @@ export async function publishPackage(moveProject) {
 
 export async function buildPackage(moveProject) {
     const tmpobj = tmp.dirSync({ unsafeCleanup: true });
+    console.log('tmpobj', tmpobj.name);
     return JSON.parse(
         execSync(
-            `cd ${moveProject} && sui move build --dump-bytecode-as-base64 --install-dir ${tmpobj.name}`,
+            `cd ${moveProject} && ${SUI_BIN} move build --dump-bytecode-as-base64 --install-dir ${tmpobj.name}`,
             { encoding: 'utf-8' },
         )
     );
@@ -87,7 +92,7 @@ export async function buildPackage(moveProject) {
 export async function upgradePackageCLI(moveProject, upgradeCap) {
     console.log('upgrading with cap', upgradeCap);
     try {
-        execSync(`cd ${moveProject} && sui client upgrade --upgrade-capability ${upgradeCap} --skip-dependency-verification --dry-run`,
+        execSync(`cd ${moveProject} && ${SUI_BIN} client upgrade --upgrade-capability ${upgradeCap} --skip-dependency-verification --dry-run`,
             {stdio: 'inherit'});
     } catch(e) {
         console.log('upgrade command exited nonzero');

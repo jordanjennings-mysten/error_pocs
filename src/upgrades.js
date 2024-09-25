@@ -17,17 +17,21 @@ let testName = process.argv[2];
 
 // if the move file exists for the testName then run the test from the upgrades-versions directory
 if (await exists(`upgrades-versions/${testName}-v1.move`)) {
+    await Faucet();
     // reset the package to the original state by taking upgrades-versions/v1.move and
     // putting it in upgrades/sources/upgrades.move
+    console.log(`v1 ${testName}`);
     await fs.cp(`upgrades-versions/${testName}-v1.move`, 'upgrades/sources/upgrades.move', {overwrite: true});
 
     // deploy the package
-    await Faucet();
+    console.log(`deploy v1`)
     let {packageId, updateCap} = await Deploy('upgrades');
 
+    console.log(`v2 ${testName}`);
     // "modify" the move code in the project
     await fs.cp(`upgrades-versions/${testName}-v2.move`, 'upgrades/sources/upgrades.move', {overwrite: true});
 
+    console.log(`v2 upgrade`);
     let moveToml = await fs.readFile('./upgrades/Move.toml', 'utf-8');
     moveToml = moveToml.replace(/published-at = "(.*)"/, `published-at = "${packageId}"`);
     await fs.writeFile('./upgrades/Move.toml', moveToml);
