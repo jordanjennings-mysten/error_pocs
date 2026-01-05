@@ -48,11 +48,16 @@ module error_pocs::error_pocs {
 
     }
 
-    // native fun foo();
-    //
-    // fun non_existent_native() {
-    //     foo()
-    // }
-    //
-    // TODO cross module abort?
+
+    // for use in pure object as argument test
+    public struct Object has key, store {
+        id: UID,
+        value: u64,
+    }
+    // for use in pure object as argument test
+    public entry fun return_value(obj: Object): u64 {
+        let Object { id, value } = obj;
+        id.delete();
+        value
+    }
 }
