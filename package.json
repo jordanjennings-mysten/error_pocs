@@ -10,6 +10,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@ledgerhq/hw-transport-node-hid": "^6.29.14",
+    "@mysten/ledgerjs-hw-app-sui": "^0.6.0",
+    "@mysten/signers": "^0.5.10",
     "@mysten/sui": "^1.7.0",
     "tmp": "^0.2.3",
     "tsx": "^4.19.0"
