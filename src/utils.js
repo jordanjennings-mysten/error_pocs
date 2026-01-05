@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import tmp from 'tmp';
 import { fromB64 } from '@mysten/sui/utils';
 import { Ed25519Keypair, Ed25519PublicKey } from '@mysten/sui/keypairs/ed25519';
-import { SuiClient } from '@mysten/sui/client';
+import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { Transaction, UpgradePolicy } from '@mysten/sui/transactions';
 import { requestSuiFromFaucetV0 } from "@mysten/sui/faucet";
 import * as fs from 'fs/promises';
@@ -11,6 +11,7 @@ import * as fs from 'fs/promises';
 const SUI_BIN = 'sui';
 
 const rpcUrl = 'http://localhost:9000';
+const gqlUrl = 'http://localhost:9125';
 const faucetUrl = 'http://localhost:9123';
 
 let keypair_str = 'AOn1BfySfunOZvWk4WpsmT9h2SzP4okPW69xkPQ7FWuN';
@@ -18,6 +19,7 @@ let secretKey = fromB64(keypair_str);
 
 export const keypair = Ed25519Keypair.fromSecretKey(secretKey.slice(1));
 export const address = keypair.getPublicKey().toSuiAddress();
+console.log('address', address);
 
 // create a client connected to devnet
 export const client = new SuiClient({ url: rpcUrl });
@@ -92,7 +94,7 @@ export async function buildPackage(moveProject) {
 export async function upgradePackageCLI(moveProject, upgradeCap) {
     console.log('upgrading with cap', upgradeCap);
     try {
-        execSync(`cd ${moveProject} && ${SUI_BIN} client upgrade --upgrade-capability ${upgradeCap} --skip-dependency-verification --dry-run`,
+        execSync(`cd ${moveProject} && ${SUI_BIN} client upgrade --upgrade-capability ${upgradeCap} --skip-dependency-verification --dry-run --verify-compatibility`,
             {stdio: 'inherit'});
     } catch(e) {
         console.log('upgrade command exited nonzero');
@@ -176,4 +178,18 @@ export async function exists(path) {
         console.log(e)
         return false;
     }
+}
+
+export async function drainFunds() {
+    const tx = new Transaction();
+    tx.transfer({
+        amount: tx.pure.u64(1000000000),
+    });
+
+    const result = await client.signAndExecuteTransaction({
+        transaction: tx,
+        signer: keypair,
+    });
+
+    await client.waitForTransaction({ digest: result.digest });
 }
