@@ -66,4 +66,8 @@ module ptb::ptb {
     }
 
     public fun drop_borrowed_to_borrowed_2(_a: &DropStruct) {}
+
+    public fun abort_fun() {
+        abort 1
+    }
 }
