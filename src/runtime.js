@@ -9,6 +9,7 @@ async function run_test(testName) {
     tx.moveCall({
         target: `${packageId}::error_pocs::${testName}`
     })
+    tx.setGasBudget(10000000);  // Set your gas budget here
 
     console.log('sign');
     let result = await client.signAndExecuteTransaction({
@@ -17,6 +18,18 @@ async function run_test(testName) {
     })
     console.log('wait for tx');
     await client.waitForTransaction({ digest: result.digest });
+
+    console.log(await client.getTransactionBlock({
+        digest: result.digest,
+        options: {
+            showEffects: true,
+            showObjectChanges: true,
+            showInput: true,
+            showEvents: true,
+            showBalanceChanges: true,
+        }
+    }));
+
 }
 
 if (process.argv.length < 3) {
