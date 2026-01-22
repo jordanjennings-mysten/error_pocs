@@ -70,4 +70,5 @@ module ptb::ptb {
     public fun abort_fun() {
         abort 1
     }
+    public fun vector_arg(_a: vector<u64>) {}
 }
